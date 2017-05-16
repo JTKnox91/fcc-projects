@@ -1,0 +1,24 @@
+{
+  "name": "fcc-projects",
+  "version": "1.0.0",
+  "description": "A collection of all of my Free Code Camp Projects, deployable to Heroku.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JTKnox91/fcc-projects.git"
+  },
+  "keywords": [
+    "Free Code Camp",
+    "Heroku",
+    "MongoDB"
+  ],
+  "author": "jtknox91",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JTKnox91/fcc-projects/issues"
+  },
+  "homepage": "https://github.com/JTKnox91/fcc-projects#readme"
+}
