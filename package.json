@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/JTKnox91/fcc-projects/issues"
   },
-  "homepage": "https://github.com/JTKnox91/fcc-projects#readme"
+  "homepage": "https://github.com/JTKnox91/fcc-projects#readme",
+  "dependencies": {
+    "express": "^4.15.2"
+  }
 }
