@@ -24,7 +24,8 @@
   "homepage": "https://github.com/JTKnox91/fcc-projects#readme",
   "dependencies": {
     "express": "^4.15.2",
-    "fs": "0.0.1-security"
+    "fs": "0.0.1-security",
+    "pg": "6.x"
   },
   "devDependencies": {
     "nodemon": "^1.11.0"
