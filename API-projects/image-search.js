@@ -21,13 +21,12 @@ let getSearchResults = (searchTerm, options) => {
     },
   };
 
-  console.log("QUERY build:", QUERY.build()); //remove after debug
   return new Promise(function (resolve, reject) {
     https.get(QUERY.build(), (res) => {
 
       let buffer = ""; 
       res.on('data', (d) => {buffer += d;});
-      res.on('end', () => {console.log("Successful Google Search"); resolve(JSON.parse(buffer));});
+      res.on('end', () => {resolve(JSON.parse(buffer));});
 
     }).on('error', (e) => {console.error("Failed Google Search"); reject(e);});
   });
@@ -35,13 +34,11 @@ let getSearchResults = (searchTerm, options) => {
 
 //both getSearchResults and getHistory return Promises, as they are the start of their respective chains
 let getHistory = () => {
-  console.log("retrieving history"); //remove after debug
   return new Promise((resolve, reject) => {
     pg.connect(process.env.DATABASE_URL, (err, client, done) => {
       if (err) {throw err;}
       
       qString = "SELECT * from image_search ORDER BY created_at DESC LIMIT 10;"
-      console.log(qString); //remove after debug
       client.query(qString, (err, results) => {
         done();
         if (err) {
@@ -54,9 +51,13 @@ let getHistory = () => {
   });
 };
 
-let formatSearchResults = (searchResults) => {
-  console.log("formatting search results"); //remove after debug
+let formatSearchResults = (searchResults, options) => {
+  offset = options.offset || 0;
+
+  if (searchResults.items === undefined) {throw "No Results Were Found";}
+
   let formatted = searchResults.items.map((item, i) => {
+    let rank = 1 + i + offset;
     
     let url = "", thumbnail = "";
     if (item.pagemap.imageobject) { url = url = item.pagemap.imageobject[0].url;}
@@ -67,13 +68,12 @@ let formatSearchResults = (searchResults) => {
     let snippet = item.snippet || "";
     let context = item.link || "";
     
-    return {url, thumbnail, snippet, context};
+    return {rank, url, thumbnail, snippet, context};
   });
   return formatted;
 };
 
 let formatHistory = (historyResults) => {
-  console.log("formatting history"); //remove after debug
   return historyResults.map((result) => {
     let entry = {};
     entry[result.created_at] = result.search_term;
@@ -82,13 +82,11 @@ let formatHistory = (historyResults) => {
 };
 
 let writeSearch = (searchTerm) => {
-  console.log("writing search,", searchTerm+",", "to history"); //remove after debug
 
   pg.connect(process.env.DATABASE_URL, (err, client, done) => {
     if (err) {throw err;}
     
     let qString = "INSERT INTO image_search (search_term) VALUES ('"+searchTerm+"') RETURNING (search_term, created_at);"
-    console.log(qString);
     client.query(qString, (err, results) => {
       done();
       console.log("created new row", results.rows);
@@ -100,7 +98,6 @@ module.exports = function (req, res, next) {
  
   // HELPER FUNCTIONS
   let returnOK = (body, status, contentType, moreHeaders) => {
-    console.log("returning OK");
     res.status(status || 200);
     res.set({"Content-Type": contentType || "application/json"});
     if (moreHeaders !== undefined) {res.set(moreHeaders);}
@@ -118,9 +115,7 @@ module.exports = function (req, res, next) {
 
   //MAIN LOGIC && ROUTING
   let path = req.url.split(/\/|\?/);
-  console.log("path:", path); //remove after debug
   let option = path[1];
-  console.log("option:", option);
 
   //if blank
     //show index page
@@ -134,9 +129,7 @@ module.exports = function (req, res, next) {
   } else if (option === "search") {
     //read search term and offset
     let searchTerm = path[2];
-    console.log("searchTerm:", searchTerm); //remove after debug
-    let offset = req.params.offset;
-    console.log("offset:", offset); //remove after debug
+    let offset = Number(req.query.offset) || 0;
 
     //write search term and search time to DB
     writeSearch(searchTerm)
@@ -145,7 +138,7 @@ module.exports = function (req, res, next) {
     //format results from google search
     //return results
     getSearchResults(searchTerm, {offset})
-      .then(formatSearchResults)
+      .then((results) => {return formatSearchResults(results, {offset});})
       .then(returnOK)
       .catch(returnERR)
 
