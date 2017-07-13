@@ -36,7 +36,22 @@ let getSearchResults = (searchTerm, options) => {
 //both getSearchResults and getHistory return Promises, as they are the start of their respective chains
 let getHistory = () => {
   console.log("retrieving history"); //remove after debug
-  return arguments;
+  return new Promise((resolve, reject) => {
+    pg.connect(process.env.DATABASE_URL, (err, client, done) => {
+      if (err) {throw err;}
+      
+      qString = "SELECT * from image_search ORDER BY created_at DESC LIMIT 10;"
+      console.log(qString); //remove after debug
+      client.query(qString, (err, results) => {
+        done();
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results.rows);
+        }
+      });
+    });
+  });
 };
 
 let formatSearchResults = (searchResults) => {
@@ -48,24 +63,37 @@ let formatSearchResults = (searchResults) => {
     if (item.pagemap.cse_thumbnail) {
       thumbnail = item.pagemap.cse_thumbnail[0].src
     } else {thumbnail = url;}
-    
+
     let snippet = item.snippet || "";
     let context = item.link || "";
     
     return {url, thumbnail, snippet, context};
   });
-  console.log("formatted:", formatted);
   return formatted;
 };
 
 let formatHistory = (historyResults) => {
-  console.log("formatting history", history); //remove after debug
-  return historyResults;
+  console.log("formatting history"); //remove after debug
+  return historyResults.map((result) => {
+    let entry = {};
+    entry[result.created_at] = result.search_term;
+    return entry;
+  });
 };
 
 let writeSearch = (searchTerm) => {
   console.log("writing search,", searchTerm+",", "to history"); //remove after debug
-  return arguments;
+
+  pg.connect(process.env.DATABASE_URL, (err, client, done) => {
+    if (err) {throw err;}
+    
+    let qString = "INSERT INTO image_search (search_term) VALUES ('"+searchTerm+"') RETURNING (search_term, created_at);"
+    console.log(qString);
+    client.query(qString, (err, results) => {
+      done();
+      console.log("created new row", results.rows);
+    });
+  });
 };
 
 module.exports = function (req, res, next) {
@@ -76,7 +104,7 @@ module.exports = function (req, res, next) {
     res.status(status || 200);
     res.set({"Content-Type": contentType || "application/json"});
     if (moreHeaders !== undefined) {res.set(moreHeaders);}
-    if (typeof body !== "string") {body = JSON.stringify(body);}
+    if (res.get('Content-Type') === "application/json" && typeof body === "object") {body = JSON.stringify(body);}
     res.end(body);
   };
 
@@ -84,7 +112,7 @@ module.exports = function (req, res, next) {
     console.error(message);
     res.status(status || 400);
     res.set({"Content-Type": "text/plain"});
-    if (typeof message !== "string") {message = JSON.stringify(message);}
+    if (typeof message === "object") {message = JSON.stringify(message);}
     res.end(message);
   };
 
